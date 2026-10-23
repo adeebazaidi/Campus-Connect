@@ -1,6 +1,5 @@
 // server/config/db.js
 const mongoose = require("mongoose");
-const { MongoMemoryServer } = require("mongodb-memory-server");
 const User = require("../models/User");
 const Department = require("../models/Department");
 const Complaint = require("../models/Complaint");
@@ -113,8 +112,9 @@ const connectDB = async () => {
     console.log("ℹ️ No MONGO_URI provided. Starting In-Memory MongoDB for local development...");
   }
 
-  // 2. In-Memory fallback
+  // 2. In-Memory fallback (local dev only)
   try {
+    const { MongoMemoryServer } = require("mongodb-memory-server");
     mongod = await MongoMemoryServer.create();
     const uri = mongod.getUri();
     await mongoose.connect(uri);
