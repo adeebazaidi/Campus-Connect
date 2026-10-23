@@ -22,7 +22,7 @@ const checkDatabase = async () => {
     console.log(`👥 Total users: ${userCount}`);
     
     if (userCount > 0) {
-      const users = await User.find().select('name email role -password').limit(10);
+      const users = await User.find().select('name email role').limit(10);
       console.log('\n📋 Users in database:');
       users.forEach((user, index) => {
         console.log(`   ${index + 1}. ${user.name} (${user.email}) - ${user.role}`);

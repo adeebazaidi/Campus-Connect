@@ -57,6 +57,25 @@ const roleBadge = {
   student: 'bg-[#EAAA00] text-[#3A0F34] border border-[#3A0F34]',
 };
 
+const NavItems = ({ visible, onSelect }) => (
+  <nav className="flex flex-col gap-1.5 px-3">
+    {visible.map((item) => (
+      <NavLink
+        key={item.to}
+        to={item.to}
+        end={item.end}
+        onClick={onSelect}
+        className={({ isActive }) =>
+          `nav-item ${isActive ? 'nav-item-active' : ''}`
+        }
+      >
+        {item.icon}
+        {item.label}
+      </NavLink>
+    ))}
+  </nav>
+);
+
 const Sidebar = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -70,25 +89,6 @@ const Sidebar = () => {
     logout();
     navigate('/login');
   };
-
-  const NavItems = ({ onSelect }) => (
-    <nav className="flex flex-col gap-1.5 px-3">
-      {visible.map((item) => (
-        <NavLink
-          key={item.to}
-          to={item.to}
-          end={item.end}
-          onClick={onSelect}
-          className={({ isActive }) =>
-            `nav-item ${isActive ? 'nav-item-active' : ''}`
-          }
-        >
-          {item.icon}
-          {item.label}
-        </NavLink>
-      ))}
-    </nav>
-  );
 
   return (
     <>
@@ -127,7 +127,7 @@ const Sidebar = () => {
         {/* Nav */}
         <div className="flex-1 py-4 overflow-y-auto">
           <p className="section-label">Navigation</p>
-          <NavItems />
+          <NavItems visible={visible} />
         </div>
 
         {/* Logout & Footer */}
@@ -176,7 +176,7 @@ const Sidebar = () => {
           </button>
         </div>
         <div className="flex-1 py-3 overflow-y-auto">
-          <NavItems onSelect={() => setMobileOpen(false)} />
+          <NavItems visible={visible} onSelect={() => setMobileOpen(false)} />
         </div>
         <div className="px-3 py-3 border-t-2 border-[#3A0F34]/15">
           <button onClick={handleLogout} className="nav-item w-full text-rose-600 hover:bg-rose-50">

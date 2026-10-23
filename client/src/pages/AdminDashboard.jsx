@@ -220,21 +220,24 @@ const AdminDashboard = () => {
           { label: 'Pending Queue', status: 'pending', bg: 'bg-[#EAAA00]', count: values.pending, icon: ClockIcon },
           { label: 'Active In-Progress', status: 'in-progress', bg: 'bg-white', count: values.inProgress, icon: CogIcon },
           { label: 'Resolved Archive', status: 'resolved', bg: 'bg-emerald-300', count: values.resolved, icon: CheckCircleIcon },
-        ].map(({ label, status, bg, count, icon: Icon }) => (
-          <Link
-            key={status}
-            to={`/admin/complaints?status=${status}`}
-            className={`flex items-center justify-between rounded-xl border-2 border-[#3A0F34] shadow-[3.5px_3.5px_0px_#3A0F34] px-4 py-3.5 transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_#3A0F34] ${bg}`}
-          >
-            <div className="flex items-center gap-2.5">
-              <div className="p-1.5 rounded-lg bg-white/80 border-2 border-[#3A0F34] shadow-[1px_1px_0px_#3A0F34]">
-                <Icon className="w-4 h-4 text-[#3A0F34]" />
+        ].map((item) => {
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.status}
+              to={`/admin/complaints?status=${item.status}`}
+              className={`flex items-center justify-between rounded-xl border-2 border-[#3A0F34] shadow-[3.5px_3.5px_0px_#3A0F34] px-4 py-3.5 transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_#3A0F34] ${item.bg}`}
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="p-1.5 rounded-lg bg-white/80 border-2 border-[#3A0F34] shadow-[1px_1px_0px_#3A0F34]">
+                  <Icon className="w-4 h-4 text-[#3A0F34]" />
+                </div>
+                <span className="text-sm font-black text-[#3A0F34] tracking-tight">{item.label}</span>
               </div>
-              <span className="text-sm font-black text-[#3A0F34] tracking-tight">{label}</span>
-            </div>
-            <span className="text-xl font-black text-[#3A0F34]">{count}</span>
-          </Link>
-        ))}
+              <span className="text-xl font-black text-[#3A0F34]">{item.count}</span>
+            </Link>
+          );
+        })}
       </div>
 
       {/* ── Section: Urgent Attention (Unassigned Complaints) ── */}

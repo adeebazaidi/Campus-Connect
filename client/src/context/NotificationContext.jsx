@@ -11,23 +11,27 @@ export const NotificationProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const intervalRef = useRef(null);
 
-  const fetchNotifications = useCallback(async () => {
+  const fetchNotifications = useCallback(async (isInitial = false) => {
     if (!user) return;
+    if (isInitial) setLoading(true);
     try {
       const { data } = await api.get('/api/notifications');
       setNotifications(data);
       setUnreadCount(data.filter((n) => !n.read).length);
     } catch {
       // Silent — don't interrupt UX on polling failure
+    } finally {
+      if (isInitial) setLoading(false);
     }
   }, [user]);
 
   // Initial fetch + poll every 30 seconds
   useEffect(() => {
     if (!user) return;
-    setLoading(true);
-    fetchNotifications().finally(() => setLoading(false));
-    intervalRef.current = setInterval(fetchNotifications, 30000);
+    fetchNotifications(true);
+    intervalRef.current = setInterval(() => {
+      fetchNotifications(false);
+    }, 30000);
     return () => clearInterval(intervalRef.current);
   }, [user, fetchNotifications]);
 

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import api from '../utils/api';
 
 const AuthContext = createContext();
@@ -7,24 +7,6 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(() => localStorage.getItem('cc_token'));
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const bootstrap = async () => {
-      if (!token) {
-        setLoading(false);
-        return;
-      }
-      try {
-        const { data } = await api.get('/api/auth/profile');
-        setUser(data.user);
-      } catch (error) {
-        logout();
-      } finally {
-        setLoading(false);
-      }
-    };
-    bootstrap();
-  }, [token]);
 
   const persistToken = (value) => {
     setToken(value);
@@ -35,7 +17,12 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (credentials) => {
+  const logout = useCallback(() => {
+    persistToken(null);
+    setUser(null);
+  }, []);
+
+  const login = useCallback(async (credentials) => {
     try {
       const { data } = await api.post('/api/auth/login', credentials);
       persistToken(data.token);
@@ -46,19 +33,32 @@ export const AuthProvider = ({ children }) => {
       const errorMessage = error.response?.data?.message || error.message || 'Login failed';
       throw new Error(errorMessage);
     }
-  };
+  }, []);
 
-  const register = async (payload) => {
+  const register = useCallback(async (payload) => {
     const { data } = await api.post('/api/auth/register', payload);
     persistToken(data.token);
     setUser(data.user);
     return data.user;
-  };
+  }, []);
 
-  const logout = () => {
-    persistToken(null);
-    setUser(null);
-  };
+  useEffect(() => {
+    const bootstrap = async () => {
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const { data } = await api.get('/api/auth/profile');
+        setUser(data.user);
+      } catch {
+        logout();
+      } finally {
+        setLoading(false);
+      }
+    };
+    bootstrap();
+  }, [token, logout]);
 
   const value = useMemo(
     () => ({
@@ -71,7 +71,7 @@ export const AuthProvider = ({ children }) => {
       isAdmin: user?.role === 'admin',
       isStaff: user?.role === 'staff',
     }),
-    [user, token, loading]
+    [user, token, loading, login, register, logout]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

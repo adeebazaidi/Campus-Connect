@@ -96,25 +96,28 @@ const StaffDashboard = () => {
 
       {/* Stats row with interactive filter shortcuts */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-        {STAT_CARDS.map(({ key, filterVal, label, Icon, iconBg }) => (
-          <button
-            key={key}
-            onClick={() => setFilter(filterVal)}
-            className={`stat-card text-left transition-all cursor-pointer ${
-              filter === filterVal
-                ? 'bg-[#EAAA00]/25 shadow-[5px_5px_0px_#3A0F34] -translate-y-0.5'
-                : 'hover:bg-[#DDE3E8]/30'
-            }`}
-          >
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="stat-label">{label}</span>
-              <div className={`p-1.5 rounded-lg border-2 border-[#3A0F34] shadow-[1.5px_1.5px_0px_#3A0F34] ${iconBg}`}>
-                <Icon className="w-4 h-4 text-[#3A0F34]" />
+        {STAT_CARDS.map((card) => {
+          const Icon = card.Icon;
+          return (
+            <button
+              key={card.key}
+              onClick={() => setFilter(card.filterVal)}
+              className={`stat-card text-left transition-all cursor-pointer ${
+                filter === card.filterVal
+                  ? 'bg-[#EAAA00]/25 shadow-[5px_5px_0px_#3A0F34] -translate-y-0.5'
+                  : 'hover:bg-[#DDE3E8]/30'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="stat-label">{card.label}</span>
+                <div className={`p-1.5 rounded-lg border-2 border-[#3A0F34] shadow-[1.5px_1.5px_0px_#3A0F34] ${card.iconBg}`}>
+                  <Icon className="w-4 h-4 text-[#3A0F34]" />
+                </div>
               </div>
-            </div>
-            <p className="stat-value">{stats[key]}</p>
-          </button>
-        ))}
+              <p className="stat-value">{stats[card.key]}</p>
+            </button>
+          );
+        })}
       </div>
 
       {/* Error banner with retry */}

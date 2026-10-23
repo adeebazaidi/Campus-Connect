@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Loader from '../components/Loader';
 import api from '../utils/api';
-import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import {
   DocumentIcon,
@@ -15,7 +14,6 @@ import {
 } from '../components/Icons';
 
 const AdminStatistics = () => {
-  const { user } = useAuth();
   const { addToast } = useToast();
   const [stats, setStats] = useState(null);
   const [workload, setWorkload] = useState([]);

@@ -86,7 +86,7 @@ const ComplaintDetails = () => {
   const handleStatusChange = async (newStatus) => {
     setUpdatingStatus(true);
     try {
-      const { data } = await api.patch(`/api/complaints/${id}/status`, { status: newStatus });
+      await api.patch(`/api/complaints/${id}/status`, { status: newStatus });
       setComplaint((prev) => ({ ...prev, status: newStatus }));
       addToast(`Status updated to ${newStatus}.`);
       await fetchComplaint();
