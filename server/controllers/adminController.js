@@ -7,6 +7,11 @@ exports.getUsers = asyncHandler(async (req, res) => {
   res.json(users);
 });
 
+exports.getStaff = asyncHandler(async (req, res) => {
+  const staff = await User.find({ role: 'staff' }).select('name email department').sort('name');
+  res.json(staff);
+});
+
 exports.getStats = asyncHandler(async (req, res) => {
   const [total, pending, inProgress, resolved, users] = await Promise.all([
     Complaint.countDocuments(),
@@ -16,9 +21,27 @@ exports.getStats = asyncHandler(async (req, res) => {
     User.countDocuments(),
   ]);
 
+  const categoryAgg = await Complaint.aggregate([
+    { $group: { _id: '$category', count: { $sum: 1 } } },
+  ]);
+  const categories = {};
+  categoryAgg.forEach((c) => {
+    if (c._id) categories[c._id] = c.count;
+  });
+
+  const roleAgg = await User.aggregate([
+    { $group: { _id: '$role', count: { $sum: 1 } } },
+  ]);
+  const roles = {};
+  roleAgg.forEach((r) => {
+    if (r._id) roles[r._id] = r.count;
+  });
+
   res.json({
     complaints: { total, pending, inProgress, resolved },
     users,
+    categories,
+    roles,
   });
 });
 

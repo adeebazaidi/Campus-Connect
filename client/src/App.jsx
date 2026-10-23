@@ -18,6 +18,7 @@ import SubmitComplaint from './pages/SubmitComplaint';
 import ComplaintDetails from './pages/ComplaintDetails';
 import AdminComplaints from './pages/AdminComplaints';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminStatistics from './pages/AdminStatistics';
 import NotFound from './pages/NotFound';
 import { ToastProvider } from './context/ToastContext';
 import { NotificationProvider } from './context/NotificationContext';
@@ -71,7 +72,7 @@ function App() {
               path="admin/stats"
               element={
                 <AdminRoute>
-                  <AdminDashboard />
+                  <AdminStatistics />
                 </AdminRoute>
               }
             />

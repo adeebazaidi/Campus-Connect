@@ -20,57 +20,63 @@ const AdminComplaints = () => {
   const [loading,    setLoading]    = useState(true);
   const [exporting,  setExporting]  = useState(false);
 
-  // Filters — initialise from URL query params so quick-filter links from AdminDashboard work
+  // Filters
   const [search,         setSearch]   = useState('');
   const [statusFilter,   setStatus]   = useState(searchParams.get('status') || 'all');
   const [categoryFilter, setCategory] = useState('all');
   const [dateFrom,       setDateFrom] = useState('');
   const [dateTo,         setDateTo]   = useState('');
+  const [updating,       setUpdating] = useState({});
 
-  const [updating, setUpdating] = useState({});
   const exportRef = useRef(null);
 
-  const loadData = useCallback(async () => {
+  // Synchronise state with URL params
+  useEffect(() => {
+    const urlStatus = searchParams.get('status');
+    if (urlStatus && STATUS_OPTIONS.includes(urlStatus)) {
+      setStatus(urlStatus);
+    }
+  }, [searchParams]);
+
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const params = {};
-      if (statusFilter   !== 'all') params.status   = statusFilter;
-      if (categoryFilter !== 'all') params.category  = categoryFilter;
-      if (dateFrom) params.from = dateFrom;
-      if (dateTo)   params.to   = dateTo;
-
-      const [{ data: cData }, staffRes] = await Promise.all([
-        api.get('/api/complaints/all', { params }),
-        isAdmin ? api.get('/api/admin/users') : Promise.resolve({ data: [] }),
+      const [compRes, staffRes] = await Promise.all([
+        api.get('/api/complaints/all'),
+        api.get('/api/admin/staff'),
       ]);
-      setComplaints(Array.isArray(cData) ? cData : []);
-      if (isAdmin) setStaff(staffRes.data.filter((u) => u.role === 'staff'));
+      setComplaints(compRes.data);
+      setStaff(staffRes.data);
     } catch {
       addToast('Failed to load complaints.', 'error');
     } finally {
       setLoading(false);
     }
-  }, [isAdmin, addToast, statusFilter, categoryFilter, dateFrom, dateTo]);
+  }, [addToast]);
 
-  useEffect(() => { loadData(); }, [loadData]);
-
-  // Sync status from URL param (from AdminDashboard quick-filter links)
   useEffect(() => {
-    const s = searchParams.get('status');
-    if (s && s !== statusFilter) setStatus(s);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    fetchData();
+  }, [fetchData]);
 
+  // Client-side filtering
   const filtered = useMemo(() => {
-    if (!search.trim()) return complaints;
-    const q = search.toLowerCase();
-    return complaints.filter(
-      (c) =>
-        c.title.toLowerCase().includes(q) ||
-        c.createdBy?.name?.toLowerCase().includes(q) ||
-        c.category?.toLowerCase().includes(q)
+    return complaints.filter((c) => {
+      if (statusFilter   !== 'all' && c.status   !== statusFilter)   return false;
+      if (categoryFilter !== 'all' && c.category !== categoryFilter) return false;
+      if (dateFrom && new Date(c.createdAt) < new Date(dateFrom)) return false;
+      if (dateTo) {
+        const to = new Date(dateTo);
+        to.setHours(23, 59, 59, 999);
+        if (new Date(c.createdAt) > to) return false;
+      }
+      return true;
+    }).filter((c) =>
+      !search.trim() ? true :
+        c.title.toLowerCase().includes(search.toLowerCase()) ||
+        c.createdBy?.name?.toLowerCase().includes(search.toLowerCase()) ||
+        c.category?.toLowerCase().includes(search.toLowerCase())
     );
-  }, [complaints, search]);
+  }, [complaints, search, statusFilter, categoryFilter, dateFrom, dateTo]);
 
   const handleReset = () => {
     setSearch('');
@@ -138,27 +144,53 @@ const AdminComplaints = () => {
       link.download = `complaints_${new Date().toISOString().split('T')[0]}.csv`;
       link.click();
       URL.revokeObjectURL(url);
-      addToast('CSV exported successfully.');
+      addToast('CSV export downloaded.');
     } catch {
-      addToast('CSV export failed.', 'error');
+      addToast('Failed to export CSV.', 'error');
     } finally {
       setExporting(false);
     }
   };
 
+  const hasActiveFilters =
+    statusFilter !== 'all' || categoryFilter !== 'all' || search || dateFrom || dateTo;
+
   if (loading) return <Loader />;
 
-  const hasActiveFilters = statusFilter !== 'all' || categoryFilter !== 'all' || dateFrom || dateTo || search;
-
   return (
-    <div className="space-y-4 w-full animate-fade-in">
-      {/* Filters bar */}
-      <div className="card py-3 space-y-3">
+    <div className="space-y-6 w-full animate-fade-in">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-4 flex-wrap bg-[#3A0F34] text-white p-5 rounded-xl border-2 border-[#3A0F34] shadow-[4px_4px_0px_#EAAA00]">
+        <div>
+          <h2 className="text-2xl font-black text-white tracking-tight font-display">All Complaints</h2>
+          <p className="text-xs font-semibold text-white/80 mt-0.5">Filter, assign, update, and export complaints across departments.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {isAdmin && (
+            <button
+              onClick={handleExportCSV}
+              disabled={exporting || filtered.length === 0}
+              className="btn bg-[#EAAA00] text-[#3A0F34] shadow-[2.5px_2.5px_0px_white] hover:bg-[#f2b305] text-xs font-black py-2 px-3.5 flex items-center gap-1.5 cursor-pointer"
+            >
+              {exporting ? (
+                <span className="h-3.5 w-3.5 rounded-full border-2 border-[#3A0F34] border-t-transparent animate-spin" />
+              ) : (
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+              )}
+              Export CSV
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Filter panel */}
+      <div className="card space-y-3 bg-white">
         {/* Row 1: Search + Status + Category */}
-        <div className="flex flex-col sm:flex-row gap-2">
-          {/* Search */}
+        <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
-            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#3A0F34]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
@@ -166,16 +198,16 @@ const AdminComplaints = () => {
               placeholder="Search by title, name, category…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="input-field pl-8 text-xs"
+              className="input-field pl-9.5 text-xs font-bold"
             />
           </div>
-          <select value={statusFilter} onChange={(e) => setStatus(e.target.value)} className="input-field w-auto text-xs">
+          <select value={statusFilter} onChange={(e) => setStatus(e.target.value)} className="select-sm py-2 px-3 pr-8 text-xs font-bold capitalize">
             <option value="all">All Statuses</option>
             {STATUS_OPTIONS.map((s) => (
               <option key={s} value={s}>{s.replace('-', ' ')}</option>
             ))}
           </select>
-          <select value={categoryFilter} onChange={(e) => setCategory(e.target.value)} className="input-field w-auto text-xs capitalize">
+          <select value={categoryFilter} onChange={(e) => setCategory(e.target.value)} className="select-sm py-2 px-3 pr-8 text-xs font-bold capitalize">
             {CATEGORIES.map((c) => (
               <option key={c} value={c}>{c === 'all' ? 'All Categories' : c}</option>
             ))}
@@ -183,54 +215,37 @@ const AdminComplaints = () => {
         </div>
 
         {/* Row 2: Date range + actions */}
-        <div className="flex flex-col sm:flex-row gap-2 items-end">
+        <div className="flex flex-col sm:flex-row gap-3 items-end">
           <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-500 shrink-0">From</label>
+            <label className="text-xs font-black uppercase tracking-wider text-[#3A0F34] shrink-0">From</label>
             <input
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
               max={dateTo || undefined}
-              className="input-field text-xs w-36"
+              className="input-field text-xs w-36 font-bold"
             />
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-500 shrink-0">To</label>
+            <label className="text-xs font-black uppercase tracking-wider text-[#3A0F34] shrink-0">To</label>
             <input
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
               min={dateFrom || undefined}
-              className="input-field text-xs w-36"
+              className="input-field text-xs w-36 font-bold"
             />
           </div>
           <div className="flex items-center gap-2 ml-auto">
             {hasActiveFilters && (
-              <button onClick={handleReset} className="btn-ghost btn-sm text-xs">
+              <button onClick={handleReset} className="btn-secondary btn-sm text-xs font-black">
                 Reset filters
-              </button>
-            )}
-            {isAdmin && (
-              <button
-                onClick={handleExportCSV}
-                disabled={exporting || filtered.length === 0}
-                className="btn-secondary btn-sm text-xs flex items-center gap-1.5"
-                title="Export current results as CSV"
-              >
-                {exporting ? (
-                  <span className="h-3 w-3 rounded-full border-2 border-slate-400 border-t-transparent animate-spin" />
-                ) : (
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
-                )}
-                Export CSV
               </button>
             )}
           </div>
         </div>
 
-        <p className="text-[11px] text-slate-400">
+        <p className="text-[11px] font-bold text-[#3A0F34]/70 pt-1">
           {filtered.length} complaint{filtered.length !== 1 ? 's' : ''} shown
           {complaints.length !== filtered.length && ` of ${complaints.length}`}
         </p>
@@ -238,10 +253,10 @@ const AdminComplaints = () => {
 
       {/* Table */}
       {filtered.length === 0 ? (
-        <div className="empty-state border border-dashed border-slate-200 rounded-xl">
-          <SearchIcon className="w-8 h-8 text-slate-300 mb-2" />
+        <div className="empty-state">
+          <SearchIcon className="w-8 h-8 text-[#3A0F34]/40 mb-2" />
           <p className="empty-state-title">No complaints match your filters</p>
-          <p className="empty-state-body">Try adjusting the search or filter options.</p>
+          <p className="empty-state-body">Try adjusting the search query or resetting filters.</p>
           {hasActiveFilters && (
             <button onClick={handleReset} className="btn-secondary btn-sm mt-4">Reset filters</button>
           )}
@@ -263,20 +278,24 @@ const AdminComplaints = () => {
               {filtered.map((complaint) => (
                 <tr key={complaint._id}>
                   <td className="max-w-md">
-                    <p className="font-semibold text-slate-800 truncate">{complaint.title}</p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
+                    <p className="font-black text-[#3A0F34] truncate">{complaint.title}</p>
+                    <p className="text-[11px] font-bold text-[#3A0F34]/60 mt-0.5">
                       {complaint.createdBy?.name || 'Student'} · {complaint.category} ·{' '}
                       {new Date(complaint.createdAt).toLocaleDateString()}
                     </p>
                   </td>
                   <td><StatusBadge status={complaint.status} /></td>
                   <td>
-                    <span className="text-xs font-semibold text-slate-700">
+                    <span className="text-xs font-bold text-[#3A0F34]">
                       {complaint.assignedTo?.name ||
                         (typeof complaint.assignedTo === 'string' &&
-                          staff.find((s) => s._id === complaint.assignedTo)?.name) || (
-                          <span className="text-slate-400 font-normal">—</span>
-                        )}
+                          staff.find((s) => s._id === complaint.assignedTo)?.name) ? (
+                            <span className="inline-block px-2 py-0.5 rounded-md bg-[#DDE3E8] border border-[#3A0F34] text-[11px] font-bold">
+                              {complaint.assignedTo?.name || staff.find((s) => s._id === complaint.assignedTo)?.name}
+                            </span>
+                          ) : (
+                            <span className="text-[#3A0F34]/40 italic font-normal">Unassigned</span>
+                          )}
                     </span>
                   </td>
                   {isAdmin && (
@@ -288,11 +307,11 @@ const AdminComplaints = () => {
                         }
                         onChange={(e) => assignStaff(complaint._id, e.target.value)}
                         disabled={!!updating[complaint._id]}
-                        className="input-field text-xs py-1"
+                        className="select-sm w-44 font-bold"
                       >
                         <option value="">Select staff…</option>
                         {staff.map((s) => (
-                          <option key={s._id} value={s._id}>{s.name}</option>
+                          <option key={s._id} value={s._id}>{s.name} ({s.department || 'Staff'})</option>
                         ))}
                       </select>
                     </td>
@@ -302,7 +321,7 @@ const AdminComplaints = () => {
                       value={complaint.status}
                       onChange={(e) => updateStatus(complaint._id, e.target.value)}
                       disabled={!!updating[complaint._id]}
-                      className="input-field text-xs py-1 w-32"
+                      className="select-sm w-32 font-bold capitalize"
                     >
                       {STATUS_OPTIONS.map((s) => (
                         <option key={s} value={s}>{s.replace('-', ' ')}</option>
@@ -312,7 +331,7 @@ const AdminComplaints = () => {
                   <td className="text-right pr-4">
                     <Link
                       to={`/complaints/${complaint._id}`}
-                      className="btn-ghost btn-xs text-primary-600 hover:text-primary-700 font-semibold inline-flex items-center gap-1"
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-black rounded-lg bg-[#EAAA00] text-[#3A0F34] border-2 border-[#3A0F34] shadow-[2px_2px_0px_#3A0F34] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_#3A0F34] transition-all"
                     >
                       View →
                     </Link>

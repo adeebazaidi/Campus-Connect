@@ -52,9 +52,9 @@ const NAV = [
 
 /* ── Role badges ─────────────────────────────────── */
 const roleBadge = {
-  admin: 'bg-purple-100 text-purple-700',
-  staff: 'bg-blue-100 text-blue-700',
-  student: 'bg-emerald-100 text-emerald-700',
+  admin: 'bg-[#3A0F34] text-white border border-[#3A0F34] shadow-[1px_1px_0px_#EAAA00]',
+  staff: 'bg-[#DDE3E8] text-[#3A0F34] border border-[#3A0F34]',
+  student: 'bg-[#EAAA00] text-[#3A0F34] border border-[#3A0F34]',
 };
 
 const Sidebar = () => {
@@ -72,7 +72,7 @@ const Sidebar = () => {
   };
 
   const NavItems = ({ onSelect }) => (
-    <nav className="flex flex-col gap-0.5 px-2">
+    <nav className="flex flex-col gap-1.5 px-3">
       {visible.map((item) => (
         <NavLink
           key={item.to}
@@ -95,29 +95,29 @@ const Sidebar = () => {
       {/* ── Desktop sidebar ─────────────────────────── */}
       <aside className="sidebar-panel">
         {/* Brand */}
-        <div className="px-4 py-4 border-b border-slate-200 shrink-0">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-primary-600 flex items-center justify-center shrink-0">
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        <div className="px-5 py-4 border-b-2 border-[#3A0F34] shrink-0 bg-[#3A0F34] text-white">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-[#EAAA00] text-[#3A0F34] border-2 border-white shadow-[2px_2px_0px_#EAAA00] flex items-center justify-center shrink-0">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5" />
               </svg>
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-800 leading-tight">CampusConnect</p>
-              <p className="text-[10px] text-slate-400">Complaint Portal</p>
+              <p className="text-base font-black text-white leading-tight font-display tracking-tight">CampusConnect</p>
+              <p className="text-[10px] font-bold text-[#EAAA00] uppercase tracking-wider">Complaint Portal</p>
             </div>
           </div>
         </div>
 
         {/* User info */}
-        <div className="px-4 py-3 border-b border-slate-100 shrink-0">
+        <div className="px-5 py-3.5 border-b-2 border-[#3A0F34]/15 bg-[#DDE3E8]/40 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-primary-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-[#3A0F34] text-[#EAAA00] border-2 border-[#3A0F34] shadow-[2px_2px_0px_#EAAA00] flex items-center justify-center text-xs font-black shrink-0">
               {user.name?.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-slate-800 truncate">{user.name}</p>
-              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full capitalize ${roleBadge[user.role]}`}>
+              <p className="text-sm font-black text-[#3A0F34] truncate">{user.name}</p>
+              <span className={`text-[10px] font-black px-2 py-0.5 rounded-full capitalize ${roleBadge[user.role]}`}>
                 {user.role}
               </span>
             </div>
@@ -125,25 +125,25 @@ const Sidebar = () => {
         </div>
 
         {/* Nav */}
-        <div className="flex-1 py-3 overflow-y-auto">
-          <p className="section-label">Menu</p>
+        <div className="flex-1 py-4 overflow-y-auto">
+          <p className="section-label">Navigation</p>
           <NavItems />
         </div>
 
-        {/* Logout & Attribution */}
-        <div className="px-2 py-3 border-t border-slate-100 shrink-0">
+        {/* Logout & Footer */}
+        <div className="px-3 py-3 border-t-2 border-[#3A0F34]/15 shrink-0 bg-white">
           <button
             onClick={handleLogout}
-            className="nav-item w-full text-red-600 hover:bg-red-50 hover:text-red-700"
+            className="nav-item w-full text-rose-600 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-400"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
             Sign Out
           </button>
-          <div className="mt-2.5 pt-2 border-t border-slate-100 text-center select-none">
-            <p className="text-[11px] font-semibold text-slate-500">CampusConnect</p>
-            <p className="text-[10px] text-slate-400">Created by Adeeba Fatima Zaidi</p>
+          <div className="mt-2.5 pt-2 border-t border-[#3A0F34]/15 text-center select-none">
+            <p className="text-[11px] font-black uppercase tracking-wider text-[#3A0F34]">CampusConnect</p>
+            <p className="text-[10px] font-semibold text-[#3A0F34]/60">Student & Staff Portal</p>
           </div>
         </div>
       </aside>
@@ -151,20 +151,25 @@ const Sidebar = () => {
       {/* ── Mobile drawer overlay ─────────────────────── */}
       {mobileOpen && (
         <div
-          className="md:hidden fixed inset-0 z-40 bg-black/40 animate-fade-in"
+          className="md:hidden fixed inset-0 z-40 bg-[#3A0F34]/60 backdrop-blur-xs animate-fade-in"
           onClick={() => setMobileOpen(false)}
         />
       )}
 
       {/* Mobile drawer */}
       <div
-        className={`md:hidden fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 flex flex-col transition-transform duration-200 ${
+        className={`md:hidden fixed inset-y-0 left-0 z-50 w-64 bg-white border-r-2 border-[#3A0F34] flex flex-col transition-transform duration-200 ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="px-4 py-4 border-b border-slate-200 flex items-center justify-between">
-          <p className="font-bold text-slate-800">CampusConnect</p>
-          <button onClick={() => setMobileOpen(false)} className="text-slate-400 hover:text-slate-600">
+        <div className="px-4 py-4 border-b-2 border-[#3A0F34] flex items-center justify-between bg-[#3A0F34] text-white">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-[#EAAA00] text-[#3A0F34] border-2 border-white flex items-center justify-center font-black text-xs">
+              CC
+            </div>
+            <p className="font-black text-white font-display text-base">CampusConnect</p>
+          </div>
+          <button onClick={() => setMobileOpen(false)} className="p-1 text-white hover:bg-[#55184d] rounded-md border-2 border-transparent hover:border-[#EAAA00]">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -173,13 +178,13 @@ const Sidebar = () => {
         <div className="flex-1 py-3 overflow-y-auto">
           <NavItems onSelect={() => setMobileOpen(false)} />
         </div>
-        <div className="px-2 py-3 border-t border-slate-100">
-          <button onClick={handleLogout} className="nav-item w-full text-red-600 hover:bg-red-50">
+        <div className="px-3 py-3 border-t-2 border-[#3A0F34]/15">
+          <button onClick={handleLogout} className="nav-item w-full text-rose-600 hover:bg-rose-50">
             Sign Out
           </button>
-          <div className="mt-2.5 pt-2 border-t border-slate-100 text-center select-none">
-            <p className="text-[11px] font-semibold text-slate-500">CampusConnect</p>
-            <p className="text-[10px] text-slate-400">Created by Adeeba Fatima Zaidi</p>
+          <div className="mt-2.5 pt-2 border-t border-[#3A0F34]/15 text-center select-none">
+            <p className="text-[11px] font-black uppercase tracking-wider text-[#3A0F34]">CampusConnect</p>
+            <p className="text-[10px] font-semibold text-[#3A0F34]/60">Student & Staff Portal</p>
           </div>
         </div>
       </div>

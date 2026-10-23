@@ -26,23 +26,23 @@ export function ToastProvider({ children }) {
         {toasts.map((t) => (
           <div
             key={t.id}
-            className={`pointer-events-auto flex items-center gap-3 rounded-xl border px-4 py-3 shadow-lg text-sm font-medium animate-slide-up max-w-xs ${
+            className={`pointer-events-auto flex items-center gap-3 rounded-xl border-2 border-[#3A0F34] px-4 py-3 shadow-[4px_4px_0px_#3A0F34] text-sm font-black animate-slide-up max-w-sm ${
               t.type === 'error'
-                ? 'bg-white border-red-200 text-red-800'
-                : 'bg-white border-emerald-200 text-emerald-800'
+                ? 'bg-rose-100 text-rose-950'
+                : 'bg-[#EAAA00] text-[#3A0F34]'
             }`}
           >
             <span className="shrink-0">
               {t.type === 'error' ? (
-                <WarningIcon className="w-4 h-4 text-red-500" />
+                <WarningIcon className="w-4 h-4 text-rose-800" />
               ) : (
-                <CheckCircleIcon className="w-4 h-4 text-emerald-500" />
+                <CheckCircleIcon className="w-4 h-4 text-[#3A0F34]" />
               )}
             </span>
-            <span className="flex-1">{t.message}</span>
+            <span className="flex-1 font-bold">{t.message}</span>
             <button
               onClick={() => removeToast(t.id)}
-              className="shrink-0 p-1 text-slate-400 hover:text-slate-600 transition-colors rounded"
+              className="shrink-0 p-1 text-[#3A0F34] hover:bg-[#3A0F34]/15 rounded border border-[#3A0F34] transition-colors"
               aria-label="Dismiss notification"
             >
               <CloseIcon className="w-3.5 h-3.5" />

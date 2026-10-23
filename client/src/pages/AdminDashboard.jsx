@@ -4,6 +4,7 @@ import Loader from '../components/Loader';
 import StatusBadge from '../components/StatusBadge';
 import api from '../utils/api';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import {
   DocumentIcon,
   ClockIcon,
@@ -15,333 +16,419 @@ import {
   UserIcon,
 } from '../components/Icons';
 
-const STAT_CARDS = [
-  { key: 'total',      label: 'Total Complaints', Icon: DocumentIcon,    iconColor: 'text-slate-500',    colorCls: 'text-slate-800',    border: 'border-l-slate-400' },
-  { key: 'pending',    label: 'Pending',          Icon: ClockIcon,       iconColor: 'text-amber-500',    colorCls: 'text-amber-600',   border: 'border-l-amber-400' },
-  { key: 'inProgress', label: 'In Progress',      Icon: CogIcon,         iconColor: 'text-blue-500',     colorCls: 'text-blue-600',    border: 'border-l-blue-400' },
-  { key: 'resolved',   label: 'Resolved',         Icon: CheckCircleIcon, iconColor: 'text-emerald-500',  colorCls: 'text-emerald-600', border: 'border-l-emerald-400' },
-  { key: 'users',      label: 'Total Users',      Icon: UsersIcon,       iconColor: 'text-purple-500',   colorCls: 'text-purple-600',  border: 'border-l-purple-400' },
-];
-
 const AdminDashboard = () => {
   const { user } = useAuth();
-  const [stats,            setStats]    = useState(null);
-  const [recentComplaints, setRecent]   = useState([]);
-  const [workload,         setWorkload] = useState([]);
-  const [loading,          setLoading]  = useState(true);
-  const [error,            setError]    = useState('');
-  const [activeTab,        setTab]      = useState('overview'); // 'overview' | 'workload'
+  const { addToast } = useToast();
+  const [stats, setStats] = useState(null);
+  const [complaints, setComplaints] = useState([]);
+  const [staff, setStaff] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState({});
+  const [error, setError] = useState('');
+
+  const fetchDashboardData = async () => {
+    try {
+      const [statsRes, compRes, staffRes] = await Promise.all([
+        api.get('/api/admin/stats'),
+        api.get('/api/complaints/all'),
+        api.get('/api/admin/staff'),
+      ]);
+      setStats(statsRes.data);
+      setComplaints(Array.isArray(compRes.data) ? compRes.data : []);
+      setStaff(Array.isArray(staffRes.data) ? staffRes.data : []);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to load dashboard data.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchAll = async () => {
-      try {
-        const [statsRes, complaintsRes, workloadRes] = await Promise.all([
-          api.get('/api/admin/stats'),
-          api.get('/api/complaints/all'),
-          api.get('/api/admin/workload'),
-        ]);
-        setStats(statsRes.data);
-        setRecent(Array.isArray(complaintsRes.data) ? complaintsRes.data.slice(0, 8) : []);
-        setWorkload(Array.isArray(workloadRes.data) ? workloadRes.data : []);
-      } catch (err) {
-        setError(err.response?.data?.message || 'Failed to load statistics.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchAll();
+    fetchDashboardData();
   }, []);
+
+  const handleAssignStaff = async (id, staffId) => {
+    if (!staffId) return;
+    setUpdating((prev) => ({ ...prev, [id]: 'assign' }));
+    try {
+      const { data } = await api.patch(`/api/complaints/${id}/assign`, { assignedTo: staffId });
+      const staffObj =
+        data.assignedTo && typeof data.assignedTo === 'object' && data.assignedTo.name
+          ? data.assignedTo
+          : staff.find((s) => s._id === staffId) || { _id: staffId, name: 'Staff' };
+
+      setComplaints((prev) =>
+        prev.map((c) =>
+          c._id === id
+            ? { ...c, assignedTo: staffObj, status: data.status || c.status }
+            : c
+        )
+      );
+      addToast(`Assigned to ${staffObj.name}.`);
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Staff assignment failed.', 'error');
+    } finally {
+      setUpdating((prev) => ({ ...prev, [id]: undefined }));
+    }
+  };
+
+  const handleStatusChange = async (id, status) => {
+    setUpdating((prev) => ({ ...prev, [id]: 'status' }));
+    try {
+      await api.patch(`/api/complaints/${id}/status`, { status });
+      setComplaints((prev) => prev.map((c) => (c._id === id ? { ...c, status } : c)));
+      addToast('Status updated.');
+    } catch (err) {
+      addToast(err.response?.data?.message || 'Status update failed.', 'error');
+    } finally {
+      setUpdating((prev) => ({ ...prev, [id]: undefined }));
+    }
+  };
 
   if (loading) return <Loader />;
 
   if (error || !stats) {
     return (
       <div className="empty-state">
-        <WarningIcon className="w-8 h-8 text-amber-500 mb-2" />
-        <p className="empty-state-title">{error || 'No statistics available.'}</p>
+        <WarningIcon className="w-10 h-10 text-[#3A0F34] mb-3" />
+        <p className="empty-state-title">{error || 'No operational data available.'}</p>
         <button onClick={() => window.location.reload()} className="btn-secondary btn-sm mt-4">Retry</button>
       </div>
     );
   }
 
+  const unassignedComplaints = complaints.filter((c) => !c.assignedTo || !c.assignedTo.name);
+  const recentComplaints = complaints.slice(0, 8);
+
   const values = {
-    total:      stats.complaints.total,
-    pending:    stats.complaints.pending,
-    inProgress: stats.complaints.inProgress,
-    resolved:   stats.complaints.resolved,
-    users:      stats.users,
+    total:      stats.complaints.total || complaints.length,
+    pending:    stats.complaints.pending || 0,
+    inProgress: stats.complaints.inProgress || 0,
+    resolved:   stats.complaints.resolved || 0,
+    users:      stats.users || 0,
+    unassigned: unassignedComplaints.length,
   };
 
-  const resolutionRate = values.total > 0 ? Math.round((values.resolved  / values.total) * 100) : 0;
-  const pendingRate    = values.total > 0 ? Math.round((values.pending   / values.total) * 100) : 0;
-
   return (
-    <div className="space-y-5 w-full animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+    <div className="space-y-6 w-full animate-fade-in">
+      {/* ── Operational Command Hero Banner (#3A0F34 Plum Neo-Brutalist) ── */}
+      <div className="bg-[#3A0F34] text-white p-6 rounded-xl border-2 border-[#3A0F34] shadow-[5px_5px_0px_#EAAA00] flex flex-col md:flex-row md:items-center md:justify-between gap-5">
         <div>
-          <h2 className="page-title">Admin Dashboard</h2>
-          <p className="page-subtitle">Welcome back, {user?.name || 'Administrator'} • Platform-wide complaint analytics and workload.</p>
-        </div>
-        <Link to="/admin/complaints" className="btn-primary btn-sm shrink-0">
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
-          Manage All Complaints
-        </Link>
-      </div>
-
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        {STAT_CARDS.map(({ key, label, Icon, iconColor, colorCls, border }) => (
-          <div key={key} className={`stat-card border-l-4 ${border}`}>
-            <div className="flex items-center justify-between mb-1">
-              <span className="stat-label">{label}</span>
-              <Icon className={`w-5 h-5 ${iconColor}`} />
-            </div>
-            <p className={`stat-value ${colorCls}`}>{values[key]}</p>
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#EAAA00] text-[#3A0F34] text-xs font-black uppercase tracking-wider mb-2 border border-white">
+            Live Command Center
           </div>
-        ))}
+          <h1 className="text-2xl md:text-3xl font-black text-white font-display tracking-tight">
+            Admin Operational Dashboard
+          </h1>
+          <p className="text-xs md:text-sm font-semibold text-white/80 mt-1 max-w-xl">
+            Welcome back, {user?.name || 'Administrator'} • Active operational triage, instant staff assignment, and grievance routing.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3 shrink-0 flex-wrap">
+          <Link
+            to="/admin/complaints"
+            className="btn bg-[#EAAA00] text-[#3A0F34] shadow-[3px_3px_0px_white] hover:bg-[#f2b305] text-xs font-black py-2.5 px-4 flex items-center gap-2"
+          >
+            <DocumentIcon className="w-4 h-4" />
+            Manage All Complaints
+          </Link>
+          <Link
+            to="/admin/stats"
+            className="btn bg-white text-[#3A0F34] shadow-[3px_3px_0px_#EAAA00] hover:bg-[#DDE3E8] text-xs font-black py-2.5 px-4 flex items-center gap-2"
+          >
+            <UsersIcon className="w-4 h-4" />
+            Platform Statistics →
+          </Link>
+        </div>
       </div>
 
-      {/* Quick-filter shortcuts */}
-      <div className="grid grid-cols-3 gap-3">
+      {/* ── Operational KPI Cards Grid ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+        {/* Card 1: Urgent Unassigned Callout */}
+        <div
+          className={`stat-card transition-all ${
+            values.unassigned > 0
+              ? 'bg-[#EAAA00] text-[#3A0F34] border-2 border-[#3A0F34] shadow-[4px_4px_0px_#3A0F34]'
+              : 'bg-white'
+          }`}
+        >
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="stat-label">Unassigned</span>
+            <div className="p-1.5 rounded-lg bg-white border-2 border-[#3A0F34] shadow-[1.5px_1.5px_0px_#3A0F34]">
+              <WarningIcon className="w-4 h-4 text-rose-600" />
+            </div>
+          </div>
+          <p className="stat-value">{values.unassigned}</p>
+          <span className="text-[10px] font-bold text-[#3A0F34]/80">
+            {values.unassigned > 0 ? 'Requires staff allocation' : 'All complaints assigned'}
+          </span>
+        </div>
+
+        {/* Card 2: Pending */}
+        <div className="stat-card">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="stat-label">Pending</span>
+            <div className="p-1.5 rounded-lg bg-[#EAAA00] border-2 border-[#3A0F34] shadow-[1.5px_1.5px_0px_#3A0F34]">
+              <ClockIcon className="w-4 h-4 text-[#3A0F34]" />
+            </div>
+          </div>
+          <p className="stat-value">{values.pending}</p>
+          <span className="text-[10px] font-bold text-[#3A0F34]/60">Awaiting action</span>
+        </div>
+
+        {/* Card 3: In Progress */}
+        <div className="stat-card">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="stat-label">In Progress</span>
+            <div className="p-1.5 rounded-lg bg-sky-200 border-2 border-[#3A0F34] shadow-[1.5px_1.5px_0px_#3A0F34]">
+              <CogIcon className="w-4 h-4 text-[#3A0F34]" />
+            </div>
+          </div>
+          <p className="stat-value">{values.inProgress}</p>
+          <span className="text-[10px] font-bold text-[#3A0F34]/60">Under remediation</span>
+        </div>
+
+        {/* Card 4: Resolved */}
+        <div className="stat-card">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="stat-label">Resolved</span>
+            <div className="p-1.5 rounded-lg bg-emerald-300 border-2 border-[#3A0F34] shadow-[1.5px_1.5px_0px_#3A0F34]">
+              <CheckCircleIcon className="w-4 h-4 text-[#3A0F34]" />
+            </div>
+          </div>
+          <p className="stat-value">{values.resolved}</p>
+          <span className="text-[10px] font-bold text-[#3A0F34]/60">Closed successfully</span>
+        </div>
+
+        {/* Card 5: Total Complaints */}
+        <div className="stat-card">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="stat-label">Total Volume</span>
+            <div className="p-1.5 rounded-lg bg-[#DDE3E8] border-2 border-[#3A0F34] shadow-[1.5px_1.5px_0px_#3A0F34]">
+              <DocumentIcon className="w-4 h-4 text-[#3A0F34]" />
+            </div>
+          </div>
+          <p className="stat-value">{values.total}</p>
+          <span className="text-[10px] font-bold text-[#3A0F34]/60">Lifetime logged</span>
+        </div>
+      </div>
+
+      {/* ── Operational Shortcut Filters ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
         {[
-          { label: 'Pending',     status: 'pending',     color: 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100',       Icon: ClockIcon,       iconColor: 'text-amber-600', count: values.pending },
-          { label: 'In Progress', status: 'in-progress', color: 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100',           Icon: CogIcon,         iconColor: 'text-blue-600',  count: values.inProgress },
-          { label: 'Resolved',    status: 'resolved',    color: 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100', Icon: CheckCircleIcon, iconColor: 'text-emerald-600', count: values.resolved },
-        ].map(({ label, status, color, Icon, iconColor, count }) => (
+          { label: 'Pending Queue', status: 'pending', bg: 'bg-[#EAAA00]', count: values.pending, icon: ClockIcon },
+          { label: 'Active In-Progress', status: 'in-progress', bg: 'bg-white', count: values.inProgress, icon: CogIcon },
+          { label: 'Resolved Archive', status: 'resolved', bg: 'bg-emerald-300', count: values.resolved, icon: CheckCircleIcon },
+        ].map(({ label, status, bg, count, icon: Icon }) => (
           <Link
             key={status}
             to={`/admin/complaints?status=${status}`}
-            className={`flex items-center justify-between rounded-xl border px-4 py-3 transition-colors ${color}`}
+            className={`flex items-center justify-between rounded-xl border-2 border-[#3A0F34] shadow-[3.5px_3.5px_0px_#3A0F34] px-4 py-3.5 transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_#3A0F34] ${bg}`}
           >
-            <div className="flex items-center gap-2">
-              <Icon className={`w-4 h-4 ${iconColor}`} />
-              <span className="text-sm font-semibold">{label}</span>
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 rounded-lg bg-white/80 border-2 border-[#3A0F34] shadow-[1px_1px_0px_#3A0F34]">
+                <Icon className="w-4 h-4 text-[#3A0F34]" />
+              </div>
+              <span className="text-sm font-black text-[#3A0F34] tracking-tight">{label}</span>
             </div>
-            <span className="text-lg font-bold">{count}</span>
+            <span className="text-xl font-black text-[#3A0F34]">{count}</span>
           </Link>
         ))}
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1 border-b border-slate-200">
-        {[
-          { id: 'overview',  label: 'Overview' },
-          { id: 'workload',  label: `Staff Workload (${workload.length})` },
-        ].map(({ id, label }) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={`px-4 py-2 text-xs font-semibold border-b-2 transition-colors ${
-              activeTab === id
-                ? 'border-primary-600 text-primary-700'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
+      {/* ── Section: Urgent Attention (Unassigned Complaints) ── */}
+      <div className="card space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b-2 border-[#3A0F34]/15 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-lg bg-[#EAAA00] text-[#3A0F34] border-2 border-[#3A0F34] shadow-[1.5px_1.5px_0px_#3A0F34]">
+              <WarningIcon className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-base font-black text-[#3A0F34] font-display uppercase tracking-wider">
+                Urgent Attention: Unassigned Complaints
+              </h2>
+              <p className="text-xs font-semibold text-[#3A0F34]/70 mt-0.5">
+                Assign staff members immediately to start investigation and remediation
+              </p>
+            </div>
+          </div>
+          <span
+            className={`px-3 py-1 rounded-md text-xs font-black border-2 border-[#3A0F34] shadow-[2px_2px_0px_#3A0F34] self-start sm:self-auto ${
+              unassignedComplaints.length > 0 ? 'bg-[#EAAA00] text-[#3A0F34]' : 'bg-emerald-300 text-[#3A0F34]'
             }`}
           >
-            {label}
-          </button>
-        ))}
-      </div>
+            {unassignedComplaints.length} Unassigned
+          </span>
+        </div>
 
-      {/* Tab: Overview */}
-      {activeTab === 'overview' && (
-        <>
-          {/* Breakdown */}
-          <div className="card space-y-4">
-            <h2 className="text-sm font-bold text-slate-800">Complaint Breakdown</h2>
-
+        {unassignedComplaints.length === 0 ? (
+          <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 border-2 border-[#3A0F34] shadow-[2px_2px_0px_#3A0F34]">
+            <CheckCircleIcon className="w-6 h-6 text-emerald-600 shrink-0" />
             <div>
-              <div className="flex justify-between items-center mb-1.5">
-                <span className="text-xs text-slate-600 font-medium">Resolution Rate</span>
-                <span className="text-xs font-bold text-emerald-600">{resolutionRate}%</span>
-              </div>
-              <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-                <div className="h-full bg-emerald-500 rounded-full transition-all duration-700" style={{ width: `${resolutionRate}%` }} />
-              </div>
+              <p className="text-sm font-black text-[#3A0F34]">Operational Queue Clean!</p>
+              <p className="text-xs font-semibold text-[#3A0F34]/70 mt-0.5">
+                All submitted complaints have been assigned to designated staff personnel.
+              </p>
             </div>
-
-            <div>
-              <div className="flex justify-between items-center mb-1.5">
-                <span className="text-xs text-slate-600 font-medium">Pending Rate</span>
-                <span className="text-xs font-bold text-amber-600">{pendingRate}%</span>
-              </div>
-              <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
-                <div className="h-full bg-amber-400 rounded-full transition-all duration-700" style={{ width: `${pendingRate}%` }} />
-              </div>
-            </div>
-
-            {values.total > 0 && (
-              <div>
-                <p className="text-xs text-slate-600 font-medium mb-1.5">Status Distribution</p>
-                <div className="h-3 rounded-full overflow-hidden flex bg-slate-100">
-                  <div className="bg-emerald-500 transition-all duration-700" style={{ width: `${(values.resolved / values.total) * 100}%` }} />
-                  <div className="bg-blue-500 transition-all duration-700"    style={{ width: `${(values.inProgress / values.total) * 100}%` }} />
-                  <div className="bg-amber-400 transition-all duration-700"   style={{ width: `${(values.pending / values.total) * 100}%` }} />
-                </div>
-                <div className="flex items-center gap-3 mt-2 flex-wrap">
-                  {[
-                    { label: 'Resolved',    color: 'bg-emerald-500', value: values.resolved },
-                    { label: 'In Progress', color: 'bg-blue-500',    value: values.inProgress },
-                    { label: 'Pending',     color: 'bg-amber-400',   value: values.pending },
-                  ].map((item) => (
-                    <div key={item.label} className="flex items-center gap-1.5 text-[11px] text-slate-500">
-                      <span className={`w-2.5 h-2.5 rounded-sm ${item.color}`} />
-                      {item.label} ({item.value})
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
-
-          {/* Recent Complaints */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-slate-700">Recent Complaints</h2>
-              <Link to="/admin/complaints" className="text-xs font-semibold text-primary-600 hover:text-primary-700">
-                View all →
-              </Link>
-            </div>
-
-            {recentComplaints.length === 0 ? (
-              <div className="empty-state border border-dashed border-slate-200 rounded-xl">
-                <ClipboardIcon className="w-8 h-8 text-slate-300 mb-2" />
-                <p className="empty-state-title">No complaints yet</p>
-              </div>
-            ) : (
-              <div className="table-wrapper">
-                <table className="table">
-                  <thead>
-                    <tr>
-                      <th>Complaint</th>
-                      <th>Status</th>
-                      <th>Submitted By</th>
-                      <th>Assigned To</th>
-                      <th>Date</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentComplaints.map((c) => (
-                      <tr key={c._id}>
-                        <td className="max-w-xs">
-                          <p className="font-semibold text-slate-800 truncate">{c.title}</p>
-                          <p className="text-[11px] text-slate-400 mt-0.5 capitalize">{c.category}</p>
-                        </td>
-                        <td><StatusBadge status={c.status} /></td>
-                        <td className="text-xs text-slate-600">{c.createdBy?.name ?? '—'}</td>
-                        <td className="text-xs text-slate-500">
-                          {c.assignedTo?.name ?? <span className="text-slate-300">Unassigned</span>}
-                        </td>
-                        <td className="text-xs text-slate-500">
-                          {new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </td>
-                        <td>
-                          <Link to={`/complaints/${c._id}`} className="text-xs font-semibold text-primary-600 hover:text-primary-700">
-                            View →
-                          </Link>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
-          {/* Summary table */}
+        ) : (
           <div className="table-wrapper">
             <table className="table">
               <thead>
                 <tr>
-                  <th>Metric</th>
-                  <th>Count</th>
-                  <th>Share</th>
+                  <th>Grievance</th>
+                  <th>Category</th>
+                  <th>Submitted By</th>
+                  <th>Date</th>
+                  <th>Assign Staff Member</th>
+                  <th className="pr-4 text-right">Action</th>
                 </tr>
               </thead>
               <tbody>
-                {[
-                  { label: 'Total Complaints', value: values.total,      share: '100%' },
-                  { label: 'Resolved',         value: values.resolved,   share: `${resolutionRate}%` },
-                  { label: 'In Progress',      value: values.inProgress, share: values.total > 0 ? `${Math.round((values.inProgress / values.total) * 100)}%` : '0%' },
-                  { label: 'Pending',          value: values.pending,    share: `${pendingRate}%` },
-                  { label: 'Registered Users', value: values.users,      share: '—' },
-                ].map((row) => (
-                  <tr key={row.label}>
-                    <td className="font-medium text-slate-700">{row.label}</td>
-                    <td className="font-bold text-slate-800">{row.value}</td>
-                    <td className="text-slate-500">{row.share}</td>
+                {unassignedComplaints.slice(0, 5).map((c) => (
+                  <tr key={c._id}>
+                    <td className="max-w-xs">
+                      <p className="font-black text-[#3A0F34] truncate">{c.title}</p>
+                      <p className="text-[11px] font-bold text-[#3A0F34]/60 truncate">{c.description}</p>
+                    </td>
+                    <td>
+                      <span className="inline-block px-2 py-0.5 rounded-md bg-[#DDE3E8] border border-[#3A0F34] text-[11px] font-black capitalize text-[#3A0F34]">
+                        {c.category}
+                      </span>
+                    </td>
+                    <td>
+                      <p className="text-xs font-bold text-[#3A0F34]">{c.createdBy?.name || 'Student'}</p>
+                      <p className="text-[11px] font-medium text-[#3A0F34]/60">{c.createdBy?.department || 'Campus'}</p>
+                    </td>
+                    <td className="text-xs font-bold text-[#3A0F34]/70">
+                      {new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </td>
+                    <td>
+                      <select
+                        defaultValue=""
+                        disabled={updating[c._id] === 'assign'}
+                        onChange={(e) => handleAssignStaff(c._id, e.target.value)}
+                        className="select-sm w-48 font-bold"
+                      >
+                        <option value="" disabled>
+                          Select Staff...
+                        </option>
+                        {staff.map((s) => (
+                          <option key={s._id} value={s._id}>
+                            {s.name} ({s.department || 'Staff'})
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="pr-4 text-right">
+                      <Link
+                        to={`/complaints/${c._id}`}
+                        className="inline-flex items-center gap-1 px-3 py-1 text-xs font-black rounded-lg bg-[#EAAA00] text-[#3A0F34] border-2 border-[#3A0F34] shadow-[2px_2px_0px_#3A0F34] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_#3A0F34] transition-all"
+                      >
+                        Details →
+                      </Link>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </>
-      )}
+        )}
+      </div>
 
-      {/* Tab: Staff Workload */}
-      {activeTab === 'workload' && (
-        <div>
-          <p className="text-xs text-slate-500 mb-3">
-            Complaint assignments per staff member. Counts reflect currently stored records.
-          </p>
-          {workload.length === 0 ? (
-            <div className="empty-state border border-dashed border-slate-200 rounded-xl">
-              <UserIcon className="w-8 h-8 text-slate-300 mb-2" />
-              <p className="empty-state-title">No staff members found</p>
-            </div>
-          ) : (
-            <div className="table-wrapper">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Staff Member</th>
-                    <th>Department</th>
-                    <th>Pending</th>
-                    <th>In Progress</th>
-                    <th>Resolved</th>
-                    <th>Total Assigned</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {workload.map((s) => (
-                    <tr key={s._id}>
-                      <td>
-                        <p className="font-semibold text-slate-800">{s.name}</p>
-                        <p className="text-[11px] text-slate-400">{s.email}</p>
-                      </td>
-                      <td className="text-xs text-slate-600">{s.department ?? '—'}</td>
-                      <td>
-                        <span className={`text-xs font-bold ${s.pending > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
-                          {s.pending}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`text-xs font-bold ${s.inProgress > 0 ? 'text-blue-600' : 'text-slate-400'}`}>
-                          {s.inProgress}
-                        </span>
-                      </td>
-                      <td>
-                        <span className="text-xs font-bold text-emerald-600">{s.resolved}</span>
-                      </td>
-                      <td>
-                        <span className={`text-xs font-bold ${s.total === 0 ? 'text-slate-300' : 'text-slate-800'}`}>
-                          {s.total}
-                        </span>
-                        {s.total === 0 && (
-                          <span className="ml-2 text-[10px] text-slate-400 italic">No open assignments</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+      {/* ── Section: Recent Operational Activity ── */}
+      <div className="card space-y-4">
+        <div className="flex items-center justify-between border-b-2 border-[#3A0F34]/15 pb-3">
+          <div>
+            <h2 className="text-base font-black text-[#3A0F34] font-display uppercase tracking-wider">
+              Recent Complaints Activity
+            </h2>
+            <p className="text-xs font-semibold text-[#3A0F34]/70 mt-0.5">
+              Live incoming complaints across campus departments
+            </p>
+          </div>
+          <Link to="/admin/complaints" className="text-xs font-black text-[#3A0F34] hover:underline flex items-center gap-1">
+            View All ({complaints.length}) →
+          </Link>
         </div>
-      )}
+
+        {recentComplaints.length === 0 ? (
+          <div className="empty-state">
+            <ClipboardIcon className="w-8 h-8 text-[#3A0F34]/40 mb-2" />
+            <p className="empty-state-title">No complaints logged yet</p>
+          </div>
+        ) : (
+          <div className="table-wrapper">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Complaint</th>
+                  <th>Status</th>
+                  <th>Submitted By</th>
+                  <th>Assigned Staff</th>
+                  <th>Date</th>
+                  <th className="pr-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentComplaints.map((c) => (
+                  <tr key={c._id}>
+                    <td className="max-w-xs">
+                      <p className="font-black text-[#3A0F34] truncate">{c.title}</p>
+                      <p className="text-[11px] font-bold text-[#3A0F34]/60 mt-0.5 capitalize">{c.category}</p>
+                    </td>
+                    <td>
+                      <div className="flex items-center gap-1.5">
+                        <StatusBadge status={c.status} />
+                        <select
+                          value={c.status}
+                          disabled={updating[c._id] === 'status'}
+                          onChange={(e) => handleStatusChange(c._id, e.target.value)}
+                          className="select-sm w-32 capitalize"
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="in-progress">In Progress</option>
+                          <option value="resolved">Resolved</option>
+                        </select>
+                      </div>
+                    </td>
+                    <td className="text-xs font-bold text-[#3A0F34]">
+                      {c.createdBy?.name || '—'}
+                    </td>
+                    <td className="text-xs font-bold text-[#3A0F34]">
+                      {c.assignedTo?.name ? (
+                        <span className="inline-block px-2.5 py-1 rounded-md bg-[#DDE3E8] border border-[#3A0F34] text-[11px] font-black text-[#3A0F34]">
+                          {c.assignedTo.name}
+                        </span>
+                      ) : (
+                        <span className="inline-block px-2.5 py-1 rounded-md bg-rose-100 text-rose-800 border border-rose-300 text-[11px] font-black">
+                          Unassigned
+                        </span>
+                      )}
+                    </td>
+                    <td className="text-xs font-bold text-[#3A0F34]/70">
+                      {new Date(c.createdAt).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </td>
+                    <td className="pr-4 text-right">
+                      <Link
+                        to={`/complaints/${c._id}`}
+                        className="inline-flex items-center gap-1 px-3 py-1 text-xs font-black rounded-lg bg-[#EAAA00] text-[#3A0F34] border-2 border-[#3A0F34] shadow-[2px_2px_0px_#3A0F34] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_#3A0F34] transition-all"
+                      >
+                        View →
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

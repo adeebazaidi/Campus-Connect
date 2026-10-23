@@ -7,28 +7,22 @@ const DEMO_ACCOUNTS = [
     role: 'Admin',
     email: 'admin@campus.edu',
     password: 'admin123',
-    desc: 'Full access',
-    cls: 'border-purple-200 hover:border-purple-400 hover:bg-purple-50',
-    activeCls: 'border-purple-500 bg-purple-50 ring-2 ring-purple-200',
-    dot: 'bg-purple-500',
+    desc: 'Full Access',
+    dot: 'bg-[#3A0F34]',
   },
   {
     role: 'Staff',
     email: 'staff@campus.edu',
     password: 'staff123',
     desc: 'IT Support',
-    cls: 'border-blue-200 hover:border-blue-400 hover:bg-blue-50',
-    activeCls: 'border-blue-500 bg-blue-50 ring-2 ring-blue-200',
-    dot: 'bg-blue-500',
+    dot: 'bg-sky-400',
   },
   {
     role: 'Student',
     email: 'student@campus.edu',
     password: 'student123',
     desc: 'Submit & Track',
-    cls: 'border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50',
-    activeCls: 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-200',
-    dot: 'bg-emerald-500',
+    dot: 'bg-[#EAAA00]',
   },
 ];
 
@@ -67,30 +61,30 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-10">
-      <div className="w-full max-w-sm animate-fade-in">
+    <div className="min-h-screen bg-[#DDE3E8] flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-md animate-fade-in">
         {/* Card */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-lg p-7">
+        <div className="bg-white rounded-2xl border-2 border-[#3A0F34] shadow-[6px_6px_0px_#3A0F34] p-8">
 
           {/* Brand */}
-          <div className="flex items-center gap-2.5 mb-7">
-            <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center shrink-0">
-              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <div className="flex items-center gap-3 mb-7 pb-5 border-b-2 border-[#3A0F34]/15">
+            <div className="w-9 h-9 rounded-lg bg-[#EAAA00] text-[#3A0F34] border-2 border-[#3A0F34] shadow-[2.5px_2.5px_0px_#3A0F34] flex items-center justify-center shrink-0">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5" />
               </svg>
             </div>
             <div>
-              <p className="text-sm font-bold text-slate-800">CampusConnect</p>
-              <p className="text-[11px] text-slate-400">Complaint Management Portal</p>
+              <p className="text-base font-black text-[#3A0F34] leading-tight font-display tracking-tight">CampusConnect</p>
+              <p className="text-[10px] font-black uppercase tracking-wider text-[#3A0F34]/60">Complaint Portal</p>
             </div>
           </div>
 
-          <h1 className="text-lg font-bold text-slate-800 mb-5">Sign in to your account</h1>
+          <h1 className="text-xl font-black text-[#3A0F34] mb-5 font-display">Sign in to your account</h1>
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div>
-              <label className="input-label" htmlFor="email">Email</label>
+              <label className="input-label" htmlFor="email">Email Address</label>
               <input
                 id="email"
                 type="email"
@@ -115,14 +109,14 @@ const Login = () => {
                   onChange={handleChange}
                   required
                   autoComplete="current-password"
-                  className="input-field pr-9"
+                  className="input-field pr-10"
                   placeholder="••••••••"
                 />
                 <button
                   type="button"
                   tabIndex={-1}
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400 hover:text-slate-600 transition-colors"
+                  className="absolute inset-y-0 right-0 flex items-center px-3 text-[#3A0F34] hover:text-[#3A0F34]/70 transition-colors"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? (
@@ -140,19 +134,19 @@ const Login = () => {
             </div>
 
             {error && (
-              <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2.5">
-                <p className="text-xs text-red-700">{error}</p>
+              <div className="rounded-xl bg-rose-100 border-2 border-[#3A0F34] px-3.5 py-2.5 shadow-[2px_2px_0px_#3A0F34]">
+                <p className="text-xs font-black text-rose-950">{error}</p>
               </div>
             )}
 
             <button
               type="submit"
               disabled={loading}
-              className="btn-primary w-full"
+              className="btn-primary w-full py-2.5 text-sm"
             >
               {loading ? (
                 <>
-                  <span className="h-3.5 w-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  <span className="h-3.5 w-3.5 rounded-full border-2 border-[#3A0F34] border-t-transparent animate-spin" />
                   Signing in…
                 </>
               ) : selectedRole ? (
@@ -163,22 +157,22 @@ const Login = () => {
             </button>
           </form>
 
-          <p className="mt-4 text-center text-xs text-slate-500">
+          <p className="mt-5 text-center text-xs font-bold text-[#3A0F34]/80">
             No account?{' '}
-            <Link to="/register" className="font-semibold text-primary-600 hover:text-primary-700">
+            <Link to="/register" className="font-black text-[#3A0F34] underline decoration-2 hover:text-[#EAAA00]">
               Create one
             </Link>
           </p>
 
           {/* Demo accounts */}
-          <div className="mt-5">
+          <div className="mt-6">
             <div className="relative flex items-center gap-2 mb-3">
-              <div className="flex-1 border-t border-slate-200" />
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Quick Demo</span>
-              <div className="flex-1 border-t border-slate-200" />
+              <div className="flex-1 border-t-2 border-[#3A0F34]/20" />
+              <span className="text-[10px] font-black uppercase tracking-wider text-[#3A0F34]/60">Quick Demo Logins</span>
+              <div className="flex-1 border-t-2 border-[#3A0F34]/20" />
             </div>
 
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-2.5">
               {DEMO_ACCOUNTS.map((acc) => {
                 const active = selectedRole === acc.role;
                 return (
@@ -186,13 +180,15 @@ const Login = () => {
                     key={acc.role}
                     type="button"
                     onClick={() => handleDemo(acc)}
-                    className={`flex flex-col items-center text-center p-2.5 rounded-xl border text-xs transition-all duration-150 ${
-                      active ? acc.activeCls : `bg-white ${acc.cls}`
+                    className={`flex flex-col items-center text-center p-3 rounded-xl border-2 border-[#3A0F34] text-xs transition-all cursor-pointer ${
+                      active
+                        ? 'bg-[#EAAA00] shadow-[3px_3px_0px_#3A0F34] -translate-x-0.5 -translate-y-0.5'
+                        : 'bg-white shadow-[2px_2px_0px_#3A0F34] hover:bg-[#DDE3E8]'
                     }`}
                   >
-                    <span className={`w-2 h-2 rounded-full mb-1.5 ${acc.dot}`} />
-                    <span className="font-semibold text-slate-800">{acc.role}</span>
-                    <span className="text-[10px] text-slate-400">{acc.desc}</span>
+                    <span className={`w-2.5 h-2.5 rounded-full border border-[#3A0F34] mb-1.5 ${acc.dot}`} />
+                    <span className="font-black text-[#3A0F34]">{acc.role}</span>
+                    <span className="text-[10px] font-bold text-[#3A0F34]/70">{acc.desc}</span>
                   </button>
                 );
               })}
