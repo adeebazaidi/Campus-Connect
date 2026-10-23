@@ -1,3 +1,9 @@
+/**
+ * Author: Adeeba Fatima Zaidi
+ * Project: CampusConnect
+ * Copyright: © 2026 Adeeba Fatima Zaidi
+ */
+
 const path = require('path');
 const express = require('express');
 const cors = require('cors');
@@ -30,6 +36,7 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/complaints', require('./routes/complaintRoutes'));
 app.use('/api/comments', require('./routes/commentRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
 
 app.use(notFound);
 app.use(errorHandler);

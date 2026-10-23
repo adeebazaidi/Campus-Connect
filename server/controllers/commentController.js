@@ -1,6 +1,8 @@
 const asyncHandler = require('express-async-handler');
 const Comment = require('../models/Comment');
 const Complaint = require('../models/Complaint');
+const TimelineEvent = require('../models/TimelineEvent');
+const Notification = require('../models/Notification');
 
 const ensureAccess = (complaint, user) => {
   const isOwner = complaint.createdBy.toString() === user._id.toString();
@@ -14,7 +16,7 @@ exports.createComment = asyncHandler(async (req, res) => {
   const { complaintId } = req.params;
   const { message } = req.body;
 
-  if (!message) {
+  if (!message || !message.trim()) {
     res.status(400);
     throw new Error('Comment message is required');
   }
@@ -33,10 +35,45 @@ exports.createComment = asyncHandler(async (req, res) => {
   const comment = await Comment.create({
     complaintId,
     userId: req.user._id,
-    message,
+    message: message.trim(),
   });
 
   await comment.populate('userId', 'name role');
+
+  // Timeline event (non-blocking)
+  try {
+    await TimelineEvent.create({
+      complaintId,
+      type: 'comment_added',
+      label:
+        req.user.role === 'staff' || req.user.role === 'admin'
+          ? 'Staff reply added'
+          : 'Comment added',
+      actorId: req.user._id,
+    });
+  } catch { /* ignore */ }
+
+  // Notify other participants (non-blocking)
+  try {
+    const recipientIds = [
+      complaint.createdBy?.toString(),
+      complaint.assignedTo?.toString(),
+    ]
+      .filter(Boolean)
+      .filter((id) => id !== req.user._id.toString());
+    const uniqueIds = [...new Set(recipientIds)];
+    if (uniqueIds.length) {
+      await Notification.insertMany(
+        uniqueIds.map((rid) => ({
+          recipientId: rid,
+          type: 'comment_added',
+          message: `New comment on: "${complaint.title}"`,
+          complaintId: complaint._id,
+        }))
+      );
+    }
+  } catch { /* ignore */ }
+
   res.status(201).json(comment);
 });
 
@@ -58,5 +95,3 @@ exports.getComments = asyncHandler(async (req, res) => {
     .sort('createdAt');
   res.json(comments);
 });
-
-

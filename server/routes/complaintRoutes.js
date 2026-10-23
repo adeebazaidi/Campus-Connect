@@ -7,6 +7,7 @@ const {
   updateComplaintStatus,
   assignComplaint,
   deleteComplaint,
+  exportCSV,
 } = require('../controllers/complaintController');
 const { protect, authorizeRoles } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
@@ -21,6 +22,7 @@ router.post(
 );
 router.get('/my', protect, getMyComplaints);
 router.get('/all', protect, authorizeRoles('admin', 'staff'), getAllComplaints);
+router.get('/export', protect, authorizeRoles('admin'), exportCSV);
 router.get('/:id', protect, getComplaintById);
 router.patch(
   '/:id/status',
@@ -32,5 +34,6 @@ router.patch('/:id/assign', protect, authorizeRoles('admin'), assignComplaint);
 router.delete('/:id', protect, deleteComplaint);
 
 module.exports = router;
+
 
 
