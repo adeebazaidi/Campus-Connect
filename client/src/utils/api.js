@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000',
-  timeout: 10000, // 10 second timeout
+  baseURL: import.meta.env.VITE_API_BASE_URL || (import.meta.env.PROD ? '' : 'http://localhost:5000'),
+  timeout: 15000,
 });
 
 api.interceptors.request.use((config) => {
@@ -20,7 +20,7 @@ api.interceptors.response.use(
     if (error.code === 'ECONNREFUSED') {
       error.message = 'Cannot connect to server. Please make sure the server is running.';
     } else if (error.code === 'ERR_NETWORK') {
-      error.message = 'Network error. Please check your internet connection.';
+      error.message = 'Network error. The server could not be reached. Please check your connection or server status.';
     }
     return Promise.reject(error);
   }

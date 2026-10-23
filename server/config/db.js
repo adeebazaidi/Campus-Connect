@@ -84,21 +84,32 @@ const seedDemoData = async () => {
 };
 
 const connectDB = async () => {
+  // Reuse existing connection if already open
+  if (mongoose.connection.readyState >= 1) {
+    return;
+  }
+
   // 1. Try connecting to configured MONGO_URI if present
   if (process.env.MONGO_URI && process.env.MONGO_URI.trim()) {
     try {
       console.log("📡 Attempting connection to MongoDB URI...");
       const conn = await mongoose.connect(process.env.MONGO_URI, {
-        serverSelectionTimeoutMS: 4000,
+        serverSelectionTimeoutMS: 5000,
       });
       console.log(`✅ MongoDB connected: ${conn.connection.host}`);
       console.log(`📊 Database: ${conn.connection.name}`);
       return;
     } catch (error) {
       console.warn(`⚠️ Could not connect to primary MONGO_URI (${error.message})`);
+      if (process.env.VERCEL) {
+        throw error;
+      }
       console.log("🔄 Seamlessly falling back to In-Memory MongoDB for local development...");
     }
   } else {
+    if (process.env.VERCEL) {
+      throw new Error("MONGO_URI environment variable is not defined on Vercel.");
+    }
     console.log("ℹ️ No MONGO_URI provided. Starting In-Memory MongoDB for local development...");
   }
 

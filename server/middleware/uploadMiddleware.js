@@ -35,7 +35,9 @@ if (hasCloudinary) {
 
 if (!hasCloudinary) {
   // Use local file storage as fallback
-  const uploadsDir = path.join(__dirname, '../uploads');
+  const uploadsDir = process.env.VERCEL
+    ? path.join('/tmp', 'uploads')
+    : path.join(__dirname, '../uploads');
   
   // Create uploads directory if it doesn't exist
   if (!fs.existsSync(uploadsDir)) {
