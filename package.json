@@ -1,11 +1,14 @@
 {
   "name": "campusconnect",
   "private": true,
+  "workspaces": [
+    "client"
+  ],
   "scripts": {
     "start": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
     "server": "npm run dev --prefix server",
     "client": "npm run dev --prefix client",
-    "build": "npm run build --prefix client"
+    "build": "npm run build --workspace=client"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
