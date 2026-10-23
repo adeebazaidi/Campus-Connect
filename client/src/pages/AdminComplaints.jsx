@@ -41,18 +41,21 @@ const AdminComplaints = () => {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [compRes, staffRes] = await Promise.all([
-        api.get('/api/complaints/all'),
-        api.get('/api/admin/staff'),
-      ]);
+      const requests = [api.get('/api/complaints/all')];
+      if (isAdmin) {
+        requests.push(api.get('/api/admin/staff'));
+      }
+      const [compRes, staffRes] = await Promise.all(requests);
       setComplaints(compRes.data);
-      setStaff(staffRes.data);
+      if (staffRes) {
+        setStaff(staffRes.data);
+      }
     } catch {
       addToast('Failed to load complaints.', 'error');
     } finally {
       setLoading(false);
     }
-  }, [addToast]);
+  }, [isAdmin, addToast]);
 
   useEffect(() => {
     fetchData();

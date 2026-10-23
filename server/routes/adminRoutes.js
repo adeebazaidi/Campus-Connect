@@ -4,12 +4,12 @@ const { protect, authorizeRoles } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-router.use(protect, authorizeRoles('admin'));
+router.use(protect);
 
-router.get('/users',    getUsers);
-router.get('/staff',    getStaff);
-router.get('/stats',    getStats);
-router.get('/workload', getStaffWorkload);
+router.get('/users',    authorizeRoles('admin'), getUsers);
+router.get('/staff',    authorizeRoles('admin', 'staff'), getStaff);
+router.get('/stats',    authorizeRoles('admin'), getStats);
+router.get('/workload', authorizeRoles('admin'), getStaffWorkload);
 
 module.exports = router;
 
